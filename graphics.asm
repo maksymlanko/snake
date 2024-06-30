@@ -8,17 +8,23 @@ start:
 	mov al, 13h                 ; AL=13h - Set the mode to 13h (320x200, 256 color mode)
 	int 10h                     ; Call interrupt 10h (Video BIOS services), apply the video mode
 
-	mov dx, 5
+draw_square:	
 	mov cx, 5
-	draw_pixel:
+	mov dx, 5
+draw_x:
 	; Write pixels on the screen at coordinates (5-10,5) with color index 4
 	mov ah, 0ch                 ; AH=0Ch - Set the function number for 'Put Pixel'
 	mov bh, 0                   ; BH=0 - Use display page 0
 	mov al, 4                   ; AL=4 - Set the color index (color number 4 from the palette)
 	int 10h                     ; Call interrupt 10h (Video BIOS services), plot the pixel
-	inc cx
-	cmp cx, 10
-	jne draw_pixel
+	inc cx						; Move x to the right
+	cmp cx, 10					; Size 10-5
+	jne draw_x					; Draw another pixel of the x line
+draw_y:
+	inc dx						; Move y down
+	mov cx, 5					; Reset the x value
+	cmp dx, 10					; Size 10-5
+	jne draw_x					; Draw another line
 
 	; Keep the program running (exit on key press)
 	mov ah, 0                   ; AH=0 - Function number for 'Check Keystroke'
