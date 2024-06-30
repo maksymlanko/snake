@@ -2,6 +2,11 @@
 	; Set video mode and draw a pixel in DOS using BIOS interrupts
 
 	[org 0x100]                 ; Origin directive, set start address for the program (used in .COM files)
+section	.data
+	cur_x			DB 5
+	cur_y			DB 5
+
+section	.text
 start:
 	; Set video mode to 320x200 pixels with 256 colors
 	mov ah, 00h                 ; AH=00h - Set the function number for 'Set Video Mode'
@@ -26,9 +31,11 @@ draw_y:
 	cmp dx, 10					; Size 10-5
 	jne draw_x					; Draw another line
 
+	jmp delay
+
 
 clear_screen:
-	;Set all pixels in video memory to color index 0 (black) by repeating stosb 'cx' times
+	; Set all pixels in video memory to color index 0 (black) by repeating stosb 'cx' times
 	cld						 	; Set direction to forward (0)
     mov ax, 0A000h           	; Set segment address to video memory
     mov es, ax               	; Load ES with video memory segment
@@ -38,6 +45,15 @@ clear_screen:
     rep stosb                	; Stores AL into ES:DI and increments DI, rep + stosb is like memset()
 							
 	jmp draw_square
+
+delay:
+	; Delay for CX:DX microseconds (CX and DX are 16 bit)
+	mov ah, 86h					; Set flag to wait CX:DX time
+	xor cx, cx					; Set cx to 0
+	mov dx, 16393				; around 1/60 of second
+	int 15h						; Call wait interrupt
+
+	jmp clear_screen
 
 	; Keep the program running (exit on key press)
 	mov ah, 0                   ; AH=0 - Function number for 'Check Keystroke'
