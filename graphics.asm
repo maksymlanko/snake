@@ -26,6 +26,19 @@ draw_y:
 	cmp dx, 10					; Size 10-5
 	jne draw_x					; Draw another line
 
+
+clear_screen:
+	;Set all pixels in video memory to color index 0 (black) by repeating stosb 'cx' times
+	cld						 	; Set direction to forward (0)
+    mov ax, 0A000h           	; Set segment address to video memory
+    mov es, ax               	; Load ES with video memory segment
+    xor di, di               	; Set di to start of video memory
+    mov cx, 32000            	; There are 320x200 pixels, each pixel takes 1 byte
+    mov al, 0                	; Color index for black (clear to black)
+    rep stosb                	; Stores AL into ES:DI and increments DI, rep + stosb is like memset()
+							
+	jmp draw_square
+
 	; Keep the program running (exit on key press)
 	mov ah, 0                   ; AH=0 - Function number for 'Check Keystroke'
 	int 16h                     ; Call interrupt 16h (Keyboard BIOS services), wait for key press
