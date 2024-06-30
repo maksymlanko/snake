@@ -1,24 +1,30 @@
-# Makefile for building and running hello.asm
+# Makefile to assemble, copy, and run assembly code in DOSBox
 
-# Default target: Build and run the executable
-.PHONY: all
-all: run
+# Set the assembler
+ASM=nasm
 
-# Target to build the executable
-hello: hello.o
-	ld -m elf_i386 hello.o -o hello
+# Define the emulator command
+EMULATOR=dosbox
 
-# Target to assemble hello.asm into hello.o
-hello.o: hello.asm
-	nasm -f elf32 hello.asm -o hello.o
+# Set the source file and target output
+SRC=graphics.asm
+TARGET=graphics.com
+DOS_DIR=~/dosprograms
 
-# Target to run the executable
-.PHONY: run
-run: hello
-	./hello
+# Default target to build, copy, and run
+all: $(TARGET) run
 
-# Clean target to remove object files and executable
-.PHONY: clean
+# Assemble the .com file
+$(TARGET): $(SRC)
+	$(ASM) -f bin $(SRC) -o $(TARGET)
+	cp $(TARGET) $(DOS_DIR)
+
+# Run DOSBox
+run:
+	$(EMULATOR)
+
+# Clean up build artifacts
 clean:
-	rm -f hello.o hello
+	rm -f $(TARGET)
+	rm -f $(DOS_DIR)/$(TARGET)
 
