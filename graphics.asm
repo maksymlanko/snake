@@ -3,8 +3,9 @@
 
 	[org 0x100]                 ; Origin directive, set start address for the program (used in .COM files)
 section	.data
-	cur_x			DB 5
-	cur_y			DB 5
+	cur_x			DW 5
+	cur_y			DW 5
+	cur_size		DW 5
 
 section	.text
 start:
@@ -23,12 +24,16 @@ draw_x:
 	mov al, 4                   ; AL=4 - Set the color index (color number 4 from the palette)
 	int 10h                     ; Call interrupt 10h (Video BIOS services), plot the pixel
 	inc cx						; Move x to the right
-	cmp cx, 10					; Size 10-5
+	mov ax, cx
+	sub ax, [cur_x]
+	cmp ax, [cur_size]
 	jne draw_x					; Draw another pixel of the x line
 draw_y:
+	mov cx, [cur_x]				; Reset the x value
 	inc dx						; Move y down
-	mov cx, 5					; Reset the x value
-	cmp dx, 10					; Size 10-5
+	mov ax, dx
+	sub ax, [cur_y]
+	cmp ax, [cur_size]
 	jne draw_x					; Draw another line
 
 	jmp delay
@@ -52,9 +57,14 @@ delay:
 	xor cx, cx					; Set cx to 0
 	mov dx, 16393				; around 1/60 of second
 	int 15h						; Call wait interrupt
+	mov bx, [cur_x]
+	add bx, 5
+	mov [cur_x], bx
+
 
 	jmp clear_screen
 
+exit_key:
 	; Keep the program running (exit on key press)
 	mov ah, 0                   ; AH=0 - Function number for 'Check Keystroke'
 	int 16h                     ; Call interrupt 16h (Keyboard BIOS services), wait for key press
