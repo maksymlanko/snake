@@ -14,9 +14,9 @@ start:
 	mov al, 13h                 ; AL=13h - Set the mode to 13h (320x200, 256 color mode)
 	int 10h                     ; Call interrupt 10h (Video BIOS services), apply the video mode
 
-draw_square:	
-	movzx cx, [cur_x]
-	movzx dx, [cur_y] 
+draw_square:
+	mov cx, [cur_x]
+	mov dx, [cur_y] 
 draw_x:
 	; Write pixels on the screen at coordinates (5-10,5) with color index 4
 	mov ah, 0ch                 ; AH=0Ch - Set the function number for 'Put Pixel'
