@@ -45,7 +45,7 @@ clear_screen:
     mov ax, 0A000h           	; Set segment address to video memory
     mov es, ax               	; Load ES with video memory segment
     xor di, di               	; Set di to start of video memory
-    mov cx, 32000            	; There are 320x200 pixels, each pixel takes 1 byte
+    mov cx, 64000            	; There are 320x200 pixels, each pixel takes 1 byte
     mov al, 0                	; Color index for black (clear to black)
     rep stosb                	; Stores AL into ES:DI and increments DI, rep + stosb is like memset()
 							
@@ -59,9 +59,11 @@ delay:
 	int 15h						; Call wait interrupt
 	mov bx, [cur_x]
 	add bx, 5
+	cmp bx, 320
+	jl no_reset_x
+	mov bx, 0
+no_reset_x:
 	mov [cur_x], bx
-
-
 	jmp clear_screen
 
 exit_key:
