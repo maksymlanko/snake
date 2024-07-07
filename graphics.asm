@@ -15,8 +15,11 @@ start:
 	int 10h                     ; Call interrupt 10h (Video BIOS services), apply the video mode
 
 draw_square:
-	mov cx, [cur_x]
-	mov dx, [cur_y] 
+	;mov cx, [cur_x]
+	;mov dx, [cur_y]
+	mov cx, [esp+2]
+	mov dx, [esp+6]
+
 draw_x:
 	; Write pixels on the screen at coordinates (5-10,5) with color index 4
 	mov ah, 0ch                 ; AH=0Ch - Set the function number for 'Put Pixel'
@@ -36,6 +39,8 @@ draw_y:
 	cmp ax, [cur_size]
 	jne draw_x					; Draw another line
 
+	;mov [cur_x], cx
+	;mov [cur_y], dx
 	jmp delay
 
 
@@ -49,7 +54,14 @@ clear_screen:
     mov al, 0                	; Color index for black (clear to black)
     rep stosb                	; Stores AL into ES:DI and increments DI, rep + stosb is like memset()
 							
-	jmp draw_square
+	;jmp draw_square
+	sub esp, 8					; make room for 2 vars
+	mov ax, [cur_y]
+	mov [esp+4], ax				; put cur_y as 2nd arg
+	mov ax, [cur_x]
+	mov [esp+0], ax				; cur_x as 1st arg
+	call draw_square
+	add esp, 8
 
 delay:
 	; Delay for CX:DX microseconds (CX and DX are 16 bit)
