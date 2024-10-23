@@ -13,6 +13,7 @@ start:
 	mov ah, 00h                 ; AH=00h - Set the function number for 'Set Video Mode'
 	mov al, 13h                 ; AL=13h - Set the mode to 13h (320x200, 256 color mode)
 	int 10h                     ; Call interrupt 10h (Video BIOS services), apply the video mode
+	jmp delay
 
 draw_square:
 	;mov cx, [cur_x]
@@ -67,7 +68,8 @@ delay:
 	; Delay for CX:DX microseconds (CX and DX are 16 bit)
 	mov ah, 86h					; Set flag to wait CX:DX time
 	xor cx, cx					; Set cx to 0
-	mov dx, 16393				; around 1/60 of second
+	;mov dx, 16393				; around 1/60 of second
+	mov dx, 16666				; around 1/60 of second
 	int 15h						; Call wait interrupt
 	mov bx, [cur_x]
 	add bx, 5

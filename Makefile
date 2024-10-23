@@ -7,8 +7,11 @@ ASM=nasm
 EMULATOR=dosbox
 
 # Set the source file and target output
-SRC=graphics.asm
-TARGET=graphics.com
+#SRC=graphics.asm
+#TARGET=graphics.com
+SRC=test.asm
+TARGET=test.com
+
 DOS_DIR=~/dosprograms
 
 # Default target to build, copy, and run
