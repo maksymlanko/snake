@@ -9,8 +9,8 @@ EMULATOR=dosbox
 # Set the source file and target output
 #SRC=graphics.asm
 #TARGET=graphics.com
-SRC=test.asm
-TARGET=test.com
+SRC=array.asm
+TARGET=array.com
 
 DOS_DIR=~/dosprograms
 
