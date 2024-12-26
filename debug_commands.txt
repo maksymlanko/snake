@@ -3,3 +3,10 @@ u 100 -> show instructions at 100
 
 t -> single step 
 r -> print regs
+
+
+d fff0 -> see top of stack
+
+BUG IN DEBUG.COM:
+use ndisasm to check generated instructions, if you do u 100 on debug.com you might get wrong results !!!
+example is sum.com when doing push strict word 5 instead of mov ax, 5 push ax
