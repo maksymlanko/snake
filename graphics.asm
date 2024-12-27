@@ -1,11 +1,8 @@
-	; graphics.asm
-	; Set video mode and draw a pixel in DOS using BIOS interrupts
-
-	[org 0x100]                 ; Origin directive, set start address for the program (used in .COM files)
+[org 0x100]                 	; Origin directive, set start address for the program (used in .COM files)
 section	.data
-	cur_x			DW 5
-	cur_y			DW 5
-	cur_size		DW 5
+	cur_x			DW 5		; our x position
+	cur_y			DW 5		; our y position
+	cur_size		DW 5		; square length
 
 section	.text
 start:
@@ -13,35 +10,33 @@ start:
 	mov ah, 00h                 ; AH=00h - Set the function number for 'Set Video Mode'
 	mov al, 13h                 ; AL=13h - Set the mode to 13h (320x200, 256 color mode)
 	int 10h                     ; Call interrupt 10h (Video BIOS services), apply the video mode
-	jmp delay
+	jmp delay					; jump to main loop
 
 draw_square:
-	;mov cx, [cur_x]
-	;mov dx, [cur_y]
-	mov cx, [esp+2]
-	mov dx, [esp+6]
+	push bp						; save bp
+	mov bp, sp					; set bp to sp
+	mov cx, [bp+4]				; cx = x
+	mov dx, [bp+6]				; dx = y
 
 draw_x:
-	; Write pixels on the screen at coordinates (5-10,5) with color index 4
+	; draw pixels at coordinates (x->x+5 , y) with red color
 	mov ah, 0ch                 ; AH=0Ch - Set the function number for 'Put Pixel'
 	mov bh, 0                   ; BH=0 - Use display page 0
 	mov al, 4                   ; AL=4 - Set the color index (color number 4 from the palette)
 	int 10h                     ; Call interrupt 10h (Video BIOS services), plot the pixel
-	inc cx						; Move x to the right
-	mov ax, cx
-	sub ax, [cur_x]
-	cmp ax, [cur_size]
+	inc cx						; Move x to the right by 1 pixel
+	mov ax, cx					; save x of next pixel to be drawn
+	sub ax, [cur_x]				; ax = drawn_pixel - pos x
+	cmp ax, [cur_size]			; if ax == square length
 	jne draw_x					; Draw another pixel of the x line
 draw_y:
 	mov cx, [cur_x]				; Reset the x value
 	inc dx						; Move y down
-	mov ax, dx
-	sub ax, [cur_y]
-	cmp ax, [cur_size]
+	mov ax, dx					; save y of next pixel to be drawn
+	sub ax, [cur_y]				; ax = drawn_pixel - pos y
+	cmp ax, [cur_size]			; if ax == square length
 	jne draw_x					; Draw another line
 
-	;mov [cur_x], cx
-	;mov [cur_y], dx
 	jmp delay
 
 
@@ -55,14 +50,10 @@ clear_screen:
     mov al, 0                	; Color index for black (clear to black)
     rep stosb                	; Stores AL into ES:DI and increments DI, rep + stosb is like memset()
 							
-	;jmp draw_square
-	sub esp, 8					; make room for 2 vars
-	mov ax, [cur_y]
-	mov [esp+4], ax				; put cur_y as 2nd arg
-	mov ax, [cur_x]
-	mov [esp+0], ax				; cur_x as 1st arg
-	call draw_square
-	add esp, 8
+	push word [cur_y]			; arg2 = y
+	push word [cur_x]			; arg1 = x
+	call draw_square			; draw our position
+	add esp, 4					; cleanup stack
 
 delay:
 	; Delay for CX:DX microseconds (CX and DX are 16 bit)
@@ -71,14 +62,14 @@ delay:
 	;mov dx, 16393				; around 1/60 of second
 	mov dx, 16666				; around 1/60 of second
 	int 15h						; Call wait interrupt
-	mov bx, [cur_x]
-	add bx, 5
-	cmp bx, 320
-	jl no_reset_x
-	mov bx, 0
+	mov bx, [cur_x]				; load our x position
+	add bx, 5					; move it by 5
+	cmp bx, 320					; check if its at screen end
+	jl no_reset_x				; if not at screen end continue
+	mov bx, 0					; if at screen end reset position to 0
 no_reset_x:
-	mov [cur_x], bx
-	jmp clear_screen
+	mov [cur_x], bx				; update our position
+	jmp clear_screen			; clear screen
 
 exit_key:
 	; Keep the program running (exit on key press)
@@ -86,4 +77,3 @@ exit_key:
 	int 16h                     ; Call interrupt 16h (Keyboard BIOS services), wait for key press
 	mov ax, 4C00h               ; Set function for 'Terminate with return code'
 	int 21h                     ; Call interrupt 21h (DOS services), terminate the program
-
