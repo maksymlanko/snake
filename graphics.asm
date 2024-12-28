@@ -28,18 +28,31 @@ check_input:
 
 switch_left:
 	cmp al, 61h					; see if key was 'a' in ascii
-	jne switch_right			; if key is not 'a' exit
+	jne switch_down				; if key is not 'a' exit
 	mov word [mov_x], -5		; set x velocity to -5
 	mov word [mov_y], 0			; set y velocity to 0
 	jmp clear_screen			; continue main loop
 
-switch_right:
+switch_down:
 	cmp al, 73h					; see if key was 's' in ascii
-	jne exit_key				; if key is not 's' exit
-	mov word [mov_x], 0		; set x velocity to -5
+	jne switch_right			; if key is not 's' exit
+	mov word [mov_x], 0			; set x velocity to -5
 	mov word [mov_y], 5			; set x velocity to -5
-	
 	jmp clear_screen			; continue main loop
+
+switch_right:
+	cmp al, 64h					; see if key was 'd' in ascii
+	jne switch_up
+	mov word [mov_x], 5
+	mov word [mov_y], 0
+	jmp clear_screen
+
+switch_up:
+	cmp al, 77h					; see if key was 'w' in ascii
+	jne exit_key
+	mov word [mov_x], 0
+	mov word [mov_y], -5
+	jmp clear_screen
 
 draw_square:
 	push bp						; save bp
@@ -123,7 +136,6 @@ check_end_y:
 	cmp bx, 195
 	jne check_start_y
 	cmp word [mov_y], 5			; check if moving down
-	; jl check_start_y
 	jl exit_key
 	mov bx, -5					; set bx to before screen start
 	jmp update_y
@@ -132,7 +144,7 @@ check_start_y:
 	jne update_y
 	cmp word [mov_y], -5
 	jg update_y
-	mov bx, 645
+	mov bx, 195
 
 update_y:
 	add bx, [mov_y]
