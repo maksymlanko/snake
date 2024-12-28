@@ -8,11 +8,15 @@ section	.data
 
 section	.text
 start:
+	call init_screen			; change to video mode
+	jmp delay					; jump to main loop
+
+init_screen:
 	; Set video mode to 320x200 pixels with 256 colors
 	mov ah, 00h                 ; AH=00h - Set the function number for 'Set Video Mode'
 	mov al, 13h                 ; AL=13h - Set the mode to 13h (320x200, 256 color mode)
 	int 10h                     ; Call interrupt 10h (Video BIOS services), apply the video mode
-	jmp delay					; jump to main loop
+	ret
 
 check_input:
 	mov ah, 1h					; see if key was pressed
@@ -21,9 +25,19 @@ check_input:
 
 	mov ah, 0h					; read key int
 	int 16h						; call int
-	cmp al, 61h					; see if key was 'w' in ascii
+
+switch_left:
+	cmp al, 61h					; see if key was 'a' in ascii
+	jne switch_right			; if key is not 'a' exit
 	mov word [mov_x], -5		; set x velocity to -5
-	jne exit_key				; if key is not 'w' exit
+	mov word [mov_y], 0			; set y velocity to 0
+	jmp clear_screen			; continue main loop
+
+switch_right:
+	cmp al, 73h					; see if key was 's' in ascii
+	jne exit_key				; if key is not 's' exit
+	mov word [mov_x], 0		; set x velocity to -5
+	mov word [mov_y], 5			; set x velocity to -5
 	
 	jmp clear_screen			; continue main loop
 
@@ -76,14 +90,35 @@ delay:
 	;mov dx, 16393				; around 1/60 of second
 	mov dx, 16666				; around 1/60 of second
 	int 15h						; Call wait interrupt
+
+calc_x:
+	cmp word [mov_x], 0			; is there movement in x
+	je calc_y
 	mov bx, [cur_x]				; load our x position
-	add bx, [mov_x]					; move it by 5
-	cmp bx, 320					; check if its at screen end
-	jl no_reset_x				; if not at screen end continue
-	mov bx, 0					; if at screen end reset position to 0
-no_reset_x:
+
+check_end_x:
+	cmp bx, 320					; check if position = screen end
+	jne check_start_x
+	cmp word [mov_x], 5			; check if moving forward
+	jl update_x				; if vel < 5 don't reset x
+	mov bx, -5					; if x=320 and vel >= 5 -> reset x
+check_start_x:
+	cmp bx, 0					; check if position = screen start
+	jne update_x
+	cmp word [mov_x], -5		
+	jg update_x
+	mov bx, 325
+
+update_x:
+	add bx, [mov_x]				; add velocity to our x position
 	mov [cur_x], bx				; update our position
 	jmp check_input				; clear screen
+
+calc_y:
+	mov bx, [cur_y]				; load our y position
+	add bx, [mov_y]
+	mov [cur_y], bx
+	jmp check_input
 
 exit_key:
 	; Keep the program running (exit on key press)
