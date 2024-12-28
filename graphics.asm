@@ -12,6 +12,18 @@ start:
 	int 10h                     ; Call interrupt 10h (Video BIOS services), apply the video mode
 	jmp delay					; jump to main loop
 
+check_input:
+	mov ah, 1h					; see if key was pressed
+	int 16h						; call interrupt
+	jz clear_screen				; if received a key read it
+
+	mov ah, 0h					; read key int
+	int 16h						; call int
+	cmp al, 77h					; see if key was 'w' in ascii
+	jne exit_key				; if key is not 'w' exit
+	
+	jmp clear_screen			; continue main loop
+
 draw_square:
 	push bp						; save bp
 	mov bp, sp					; set bp to sp
@@ -49,7 +61,6 @@ clear_screen:
     mov cx, 64000            	; There are 320x200 pixels, each pixel takes 1 byte
     mov al, 0                	; Color index for black (clear to black)
     rep stosb                	; Stores AL into ES:DI and increments DI, rep + stosb is like memset()
-							
 	push word [cur_y]			; arg2 = y
 	push word [cur_x]			; arg1 = x
 	call draw_square			; draw our position
@@ -69,7 +80,7 @@ delay:
 	mov bx, 0					; if at screen end reset position to 0
 no_reset_x:
 	mov [cur_x], bx				; update our position
-	jmp clear_screen			; clear screen
+	jmp check_input				; clear screen
 
 exit_key:
 	; Keep the program running (exit on key press)
