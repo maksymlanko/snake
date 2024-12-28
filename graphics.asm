@@ -2,6 +2,8 @@
 section	.data
 	cur_x			DW 5		; our x position
 	cur_y			DW 5		; our y position
+	mov_x			DW 5		; our movement in x
+	mov_y			DW 0		; our movement in y
 	cur_size		DW 5		; square length
 
 section	.text
@@ -19,7 +21,8 @@ check_input:
 
 	mov ah, 0h					; read key int
 	int 16h						; call int
-	cmp al, 77h					; see if key was 'w' in ascii
+	cmp al, 61h					; see if key was 'w' in ascii
+	mov word [mov_x], -5		; set x velocity to -5
 	jne exit_key				; if key is not 'w' exit
 	
 	jmp clear_screen			; continue main loop
@@ -74,7 +77,7 @@ delay:
 	mov dx, 16666				; around 1/60 of second
 	int 15h						; Call wait interrupt
 	mov bx, [cur_x]				; load our x position
-	add bx, 5					; move it by 5
+	add bx, [mov_x]					; move it by 5
 	cmp bx, 320					; check if its at screen end
 	jl no_reset_x				; if not at screen end continue
 	mov bx, 0					; if at screen end reset position to 0
