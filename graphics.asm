@@ -115,7 +115,26 @@ update_x:
 	jmp check_input				; clear screen
 
 calc_y:
-	mov bx, [cur_y]				; load our y position
+	cmp word [mov_y], 0			; is there movement in y
+	je check_input
+	mov bx, [cur_y]
+
+check_end_y:
+	cmp bx, 195
+	jne check_start_y
+	cmp word [mov_y], 5			; check if moving down
+	; jl check_start_y
+	jl exit_key
+	mov bx, -5					; set bx to before screen start
+	jmp update_y
+check_start_y:
+	cmp bx, 0
+	jne update_y
+	cmp word [mov_y], -5
+	jg update_y
+	mov bx, 645
+
+update_y:
 	add bx, [mov_y]
 	mov [cur_y], bx
 	jmp check_input
