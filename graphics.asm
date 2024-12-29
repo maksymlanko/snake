@@ -9,7 +9,18 @@ section	.data
 section	.text
 start:
 	call init_screen			; change to video mode
-	jmp delay					; jump to main loop
+game_loop:
+	call clear_screen
+	call check_input
+	call move_square
+	; looks bad for main loop, try to fit this into another function
+	push word [cur_y]			; arg2 = y
+	push word [cur_x]			; arg1 = x
+	call draw_square			; draw our position
+	add sp, 4					; return space to stack
+
+	call delay					; jump to main loop
+	jmp game_loop
 
 init_screen:
 	; Set video mode to 320x200 pixels with 256 colors
@@ -21,8 +32,10 @@ init_screen:
 check_input:
 	mov ah, 1h					; see if key was pressed
 	int 16h						; call interrupt
-	jz clear_screen				; if received a key read it
+	jnz read_key				; if received a key read it
+	ret
 
+read_key:
 	mov ah, 0h					; read key int
 	int 16h						; call int
 
@@ -31,28 +44,29 @@ switch_left:
 	jne switch_down				; if key is not 'a' exit
 	mov word [mov_x], -5		; set x velocity to -5
 	mov word [mov_y], 0			; set y velocity to 0
-	jmp clear_screen			; continue main loop
+	ret
 
 switch_down:
 	cmp al, 73h					; see if key was 's' in ascii
 	jne switch_right			; if key is not 's' exit
 	mov word [mov_x], 0			; set x velocity to -5
 	mov word [mov_y], 5			; set x velocity to -5
-	jmp clear_screen			; continue main loop
+	ret
 
 switch_right:
 	cmp al, 64h					; see if key was 'd' in ascii
 	jne switch_up
 	mov word [mov_x], 5
 	mov word [mov_y], 0
-	jmp clear_screen
+	ret
 
 switch_up:
 	cmp al, 77h					; see if key was 'w' in ascii
-	jne exit_key
+	jne exit_check_input				; if no relevant key was pressed, ignore key press
 	mov word [mov_x], 0
 	mov word [mov_y], -5
-	jmp clear_screen
+exit_check_input:
+	ret
 
 draw_square:
 	push bp						; save bp
@@ -79,7 +93,8 @@ draw_y:
 	cmp ax, [cur_size]			; if ax == square length
 	jne draw_x					; Draw another line
 
-	jmp delay
+	pop bp
+	ret
 
 
 clear_screen:
@@ -91,10 +106,7 @@ clear_screen:
     mov cx, 64000            	; There are 320x200 pixels, each pixel takes 1 byte
     mov al, 0                	; Color index for black (clear to black)
     rep stosb                	; Stores AL into ES:DI and increments DI, rep + stosb is like memset()
-	push word [cur_y]			; arg2 = y
-	push word [cur_x]			; arg1 = x
-	call draw_square			; draw our position
-	add esp, 4					; cleanup stack
+	ret
 
 delay:
 	; Delay for CX:DX microseconds (CX and DX are 16 bit)
@@ -103,7 +115,9 @@ delay:
 	;mov dx, 16393				; around 1/60 of second
 	mov dx, 16666				; around 1/60 of second
 	int 15h						; Call wait interrupt
+	ret
 
+move_square:
 calc_x:
 	cmp word [mov_x], 0			; is there movement in x
 	je calc_y
@@ -125,11 +139,13 @@ check_start_x:
 update_x:
 	add bx, [mov_x]				; add velocity to our x position
 	mov [cur_x], bx				; update our position
-	jmp check_input				; clear screen
+	ret 
 
 calc_y:
 	cmp word [mov_y], 0			; is there movement in y
-	je check_input
+	jne after_check
+	ret
+after_check:
 	mov bx, [cur_y]
 
 check_end_y:
@@ -149,7 +165,7 @@ check_start_y:
 update_y:
 	add bx, [mov_y]
 	mov [cur_y], bx
-	jmp check_input
+	ret
 
 exit_key:
 	; Keep the program running (exit on key press)
