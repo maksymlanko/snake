@@ -72,7 +72,7 @@ snake_loop:
 	sub si, 4
 	cmp cx, [cur_len]
 	jne snake_loop
-	call exit_key
+	;call exit_key
 	ret
 
 check_input:
