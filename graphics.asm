@@ -1,24 +1,27 @@
 [org 0x100]                 	; Origin directive, set start address for the program (used in .COM files)
+
+circular_len equ 100			; max snake len / 2
 section	.data
 	cur_x			DW 5		; our x position
 	cur_y			DW 5		; our y position
 	mov_x			DW 5		; our movement in x
 	mov_y			DW 0		; our movement in y
 	cur_size		DW 5		; square length
+	cur_len			DW 2
+	game_tick		DW 1
+	snake			DW 100 dup(10)
+ 
 
 section	.text
 start:
 	call init_screen			; change to video mode
+	call create_snake			; start snake positions
 game_loop:
 	call clear_screen
 	call check_input
 	call move_square
-	; looks bad for main loop, try to fit this into another function
-	push word [cur_y]			; arg2 = y
-	push word [cur_x]			; arg1 = x
-	call draw_square			; draw our position
-	add sp, 4					; return space to stack
-
+	call save_new_position
+	call draw_snake
 	call delay					; jump to main loop
 	jmp game_loop
 
@@ -27,6 +30,49 @@ init_screen:
 	mov ah, 00h                 ; AH=00h - Set the function number for 'Set Video Mode'
 	mov al, 13h                 ; AL=13h - Set the mode to 13h (320x200, 256 color mode)
 	int 10h                     ; Call interrupt 10h (Video BIOS services), apply the video mode
+	ret
+
+save_new_position:
+	mov ax, [cur_x]				; load x position
+	mov bx, [cur_y]
+	mov si, [game_tick]			; because in 16bit you can't do lea [arr + 2 * counter]
+	shl si, 2					; saved x is 2 bytes, y is another 2 bytes, so we want index * 4
+	lea di, [snake+si]			; load position snake[2i]
+	mov [di], ax				; save x in snake[2i]
+	add di, 2					; advance index by 2
+	mov [di], bx				; save y in snake[2i+1]
+	ret
+
+create_snake:
+	mov ax, [cur_x]				; load starting x position
+	mov bx, [cur_y]				
+	; using SI and DI because CX and DX arent valid destination registers for LEA in x86 asm
+	lea si, [snake+0]			; load first address of circular buffer
+	mov [si], ax				; store in first position of circular buffer
+
+	add si, 2
+	mov [si], bx
+	ret
+
+draw_snake:
+	mov cx, 0
+	mov si, [game_tick]
+	shl si, 2
+snake_loop:
+
+	lea di, [snake + si+2]		; get y
+	push word [di] 
+	sub di, 2					; get x
+	push word [di]
+
+	call draw_square			; draw our position
+	add sp, 4
+
+	inc cx
+	sub si, 4
+	cmp cx, [cur_len]
+	jne snake_loop
+	call exit_key
 	ret
 
 check_input:
@@ -71,6 +117,8 @@ exit_check_input:
 draw_square:
 	push bp						; save bp
 	mov bp, sp					; set bp to sp
+	
+	push cx
 	mov cx, [bp+4]				; cx = x
 	mov dx, [bp+6]				; dx = y
 
@@ -78,24 +126,24 @@ draw_x:
 	; draw pixels at coordinates (x->x+5 , y) with red color
 	mov ah, 0ch                 ; AH=0Ch - Set the function number for 'Put Pixel'
 	mov bh, 0                   ; BH=0 - Use display page 0
-	mov al, 4                   ; AL=4 - Set the color index (color number 4 from the palette)
+	mov al, 2                   ; AL=4 - Set the color index (color number 4 from the palette)
 	int 10h                     ; Call interrupt 10h (Video BIOS services), plot the pixel
 	inc cx						; Move x to the right by 1 pixel
 	mov ax, cx					; save x of next pixel to be drawn
-	sub ax, [cur_x]				; ax = drawn_pixel - pos x
+	sub ax, [bp+4]				; ax = drawn_pixel - pos x
 	cmp ax, [cur_size]			; if ax == square length
 	jne draw_x					; Draw another pixel of the x line
 draw_y:
-	mov cx, [cur_x]				; Reset the x value
+	mov cx, [bp+4]				; Reset the x value
 	inc dx						; Move y down
 	mov ax, dx					; save y of next pixel to be drawn
-	sub ax, [cur_y]				; ax = drawn_pixel - pos y
+	sub ax, [bp+6]				; ax = drawn_pixel - pos y
 	cmp ax, [cur_size]			; if ax == square length
 	jne draw_x					; Draw another line
 
+	pop cx
 	pop bp
 	ret
-
 
 clear_screen:
 	; Set all pixels in video memory to color index 0 (black) by repeating stosb 'cx' times
@@ -115,6 +163,9 @@ delay:
 	;mov dx, 16393				; around 1/60 of second
 	mov dx, 16666				; around 1/60 of second
 	int 15h						; Call wait interrupt
+	mov bx, [game_tick]
+	inc bx
+	mov [game_tick], bx
 	ret
 
 move_square:
