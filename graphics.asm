@@ -33,10 +33,17 @@ init_screen:
 	ret
 
 save_new_position:
+	; get modulus
+	mov dx, 0					; DIV XX opcode: divide DX:AX by XX and store result in AX, modulus in DX
+	mov ax, [game_tick]			; load current game_tick
+	mov cx, 50					; load max game_tick (100 positions / 4 position size = 25 max game_ticks)
+	div cx						; perform division
+	mov si, dx					; save modulus in si
+	; because in 16bit you can't do lea [arr + 2 * counter]
+	shl si, 2					; saved x is 2 bytes, y is another 2 bytes, so we want index * 4
+
 	mov ax, [cur_x]				; load x position
 	mov bx, [cur_y]
-	mov si, [game_tick]			; because in 16bit you can't do lea [arr + 2 * counter]
-	shl si, 2					; saved x is 2 bytes, y is another 2 bytes, so we want index * 4
 	lea di, [snake+si]			; load position snake[2i]
 	mov [di], ax				; save x in snake[2i]
 	add di, 2					; advance index by 2
@@ -55,11 +62,16 @@ create_snake:
 	ret
 
 draw_snake:
-	mov cx, 0
-	mov si, [game_tick]
+	; get modulus
+	mov dx, 0					; DIV XX opcode: divide DX:AX by XX and store result in AX, modulus in DX
+	mov ax, [game_tick]			; load current game_tick
+	mov cx, 50					; load max game_tick (100 positions / 4 position size = 25 max game_ticks)
+	div cx						; perform division
+	mov si, dx					; save modulus in si
 	shl si, 2
-snake_loop:
 
+	mov cx, 0
+snake_loop:
 	lea di, [snake + si+2]		; get y
 	push word [di] 
 	sub di, 2					; get x
@@ -70,9 +82,13 @@ snake_loop:
 
 	inc cx
 	sub si, 4
+	; if index goes to negative values, change it to last position
+	cmp si, -4
+	jne snake_finished
+	mov si, 196
+snake_finished:
 	cmp cx, [cur_len]
 	jne snake_loop
-	;call exit_key
 	ret
 
 check_input:
@@ -165,6 +181,13 @@ delay:
 	int 15h						; Call wait interrupt
 	mov bx, [game_tick]
 	inc bx
+
+	; dont make it 0 because of out of bounds snake[] access in draw_snake
+	cmp bx, 199
+	jne	skip_reset_tick
+	mov bx, 99
+
+skip_reset_tick:
 	mov [game_tick], bx
 	ret
 
