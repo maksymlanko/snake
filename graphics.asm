@@ -22,6 +22,7 @@ game_loop:
 	call move_square
 	call save_new_position
 	call draw_snake
+	call draw_apple
 	call delay					; jump to main loop
 	jmp game_loop
 
@@ -72,13 +73,14 @@ draw_snake:
 
 	mov cx, 0
 snake_loop:
+	push word 4					; red color
 	lea di, [snake + si+2]		; get y
 	push word [di] 
 	sub di, 2					; get x
 	push word [di]
 
 	call draw_square			; draw our position
-	add sp, 4
+	add sp, 6
 
 	inc cx
 	sub si, 4
@@ -89,6 +91,15 @@ snake_loop:
 snake_finished:
 	cmp cx, [cur_len]
 	jne snake_loop
+	ret
+
+draw_apple:
+	push word 2					; green color
+	push 100
+	push 100
+
+	call draw_square			; draw apple
+	add sp, 6					; clean up stack
 	ret
 
 check_input:
@@ -142,7 +153,7 @@ draw_x:
 	; draw pixels at coordinates (x->x+5 , y) with red color
 	mov ah, 0ch                 ; AH=0Ch - Set the function number for 'Put Pixel'
 	mov bh, 0                   ; BH=0 - Use display page 0
-	mov al, 2                   ; AL=4 - Set the color index (color number 4 from the palette)
+	mov al, [bp+8]              ; AL=4 - Set the color index (color number 4 from the palette)
 	int 10h                     ; Call interrupt 10h (Video BIOS services), plot the pixel
 	inc cx						; Move x to the right by 1 pixel
 	mov ax, cx					; save x of next pixel to be drawn
