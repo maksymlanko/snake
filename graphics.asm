@@ -9,6 +9,10 @@ section	.data
 	cur_size		DW 5		; square length
 	cur_len			DW 2
 	game_tick		DW 1
+	apple_exists	DW 0		; flag for checking if apple already exists
+	apple_x			DW 0		; apple x coordinate
+	apple_y			DW 0 		; apple y coordinate
+	seed			DW 0x1337		; seed for generating apple coords
 	snake			DW 100 dup(10)
  
 
@@ -23,6 +27,7 @@ game_loop:
 	call save_new_position
 	call draw_snake
 	call draw_apple
+	call check_eaten
 	call delay					; jump to main loop
 	jmp game_loop
 
@@ -95,11 +100,29 @@ snake_finished:
 
 draw_apple:
 	push word 2					; green color
-	push 100
-	push 100
+	push word 100
+	mov word [apple_y], 100
+	push word 100
+	mov word [apple_x], 100
 
 	call draw_square			; draw apple
 	add sp, 6					; clean up stack
+	ret
+
+check_eaten:
+	mov word ax, [cur_x]		; load our x
+	mov word bx, [apple_x]		; load apple x
+	cmp ax, bx					; see if same x coordinate
+	jne not_eaten				; if different, return
+	mov word ax, [cur_y]		; load our y
+	mov word bx, [apple_y]		; load apple y
+	cmp ax, bx					; see if same y coordinate
+	jne not_eaten				; if different, return
+	
+	mov word ax, [cur_len]		; load snake length
+	inc ax						; snake len += 1
+	mov [cur_len], ax			; save snake length
+not_eaten:
 	ret
 
 check_input:
