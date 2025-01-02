@@ -12,7 +12,7 @@ section	.data
 	apple_exists	DW 0		; flag for checking if apple already exists
 	apple_x			DW 0		; apple x coordinate
 	apple_y			DW 0 		; apple y coordinate
-	seed			DW 0x1337		; seed for generating apple coords
+	seed			DW 0x1337	; seed for generating apple coords
 	snake			DW 100 dup(10)
  
 
@@ -26,7 +26,7 @@ game_loop:
 	call move_square
 	call save_new_position
 	call draw_snake
-	call draw_apple
+	call check_apple
 	call check_eaten
 	call delay					; jump to main loop
 	jmp game_loop
@@ -98,14 +98,66 @@ snake_finished:
 	jne snake_loop
 	ret
 
+get_random:
+	mov ax, [seed]				; load seed value
+	mov bx, 0xcafe				; load multiply constanst
+	mul bx						; multiply them (saved in DX:AX)
+	add ax, [game_tick]			; add kind of random value
+	mov [seed], ax				; save new seed value
+	ret
+
+check_apple:
+	mov word ax, [apple_exists]		; return saved in AX register
+	cmp ax, 0
+	jne skip_generate_coords
+
+	; get random valid y position
+	call get_random
+	push word 40				; 200pixels /5pixels per square
+	push word ax				; random value
+	call get_modulus			; get random % 40
+	mov bx, ax					; ax * 5
+	shl bx, 2
+	add ax, bx
+	mov word [apple_y], ax		; save ax in apple_y
+	add sp, 4					; clean up stack
+	; get random valid x position
+	call get_random
+	push word 64				; 320pixels /5pixels per square
+	push word ax				; random value
+	call get_modulus			; get random % 40
+	mov bx, ax					; ax * 5
+	shl bx, 2
+	add ax, bx
+	mov word [apple_x], ax		; save ax in apple_x
+	add sp, 4
+
+skip_generate_coords:
+	call draw_apple
+	ret
+
+get_modulus:
+	push bp						; save previous bp
+	mov bp, sp					; set base pointer
+
+	mov dx, 0					; DIV XX opcode: divide DX:AX by XX and store result in AX, modulus in DX
+	mov ax, [bp+4]				; get random value passed as arg1
+	mov cx, [bp+6]				; get value to use as divider (arg2)
+	div cx						; perform division
+	mov ax, dx					; save modulus in ax
+	; because in 16bit you can't do lea [arr + 2 * counter]
+	pop bp
+	ret
+
 draw_apple:
 	push word 2					; green color
-	push word 100
-	mov word [apple_y], 100
-	push word 100
-	mov word [apple_x], 100
+	mov ax, [apple_y]
+	push word ax
+	mov ax, [apple_x]
+	push word ax
 
 	call draw_square			; draw apple
+	mov word [apple_exists], 1		; set apple_exists flag to true 
 	add sp, 6					; clean up stack
 	ret
 
@@ -122,6 +174,7 @@ check_eaten:
 	mov word ax, [cur_len]		; load snake length
 	inc ax						; snake len += 1
 	mov [cur_len], ax			; save snake length
+	mov word [apple_exists], 0		; set apple_exists flag to false 
 not_eaten:
 	ret
 
