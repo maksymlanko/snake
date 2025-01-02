@@ -260,7 +260,7 @@ check_end_y:
 	cmp bx, 195
 	jne check_start_y
 	cmp word [mov_y], 5			; check if moving down
-	jl exit_key
+	jl update_y
 	mov bx, -5					; set bx to before screen start
 	jmp update_y
 check_start_y:
