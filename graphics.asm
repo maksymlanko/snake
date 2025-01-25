@@ -125,7 +125,7 @@ check_crash:
 	sub di, 2					; point to snake[len].x
 	mov bx, [di]				; load snake head x position
 
-	sub di, 2					; snake[len-1].y
+	sub di, 18					; snake[len-5].y because first 4 positions can't collide with head
 compare:
 	cmp word [di], ax			; compare snake[pos].y == snake[head].y
 	jne dec_compare_y			; if != return
