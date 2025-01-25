@@ -231,28 +231,44 @@ read_key:
 
 switch_left:
 	cmp al, 61h					; see if key was 'a' in ascii
-	jne switch_down				; if key is not 'a' exit
+	jne switch_down				; if key is not 'a' continue
+	cmp word [mov_x], 5			; confirm snake isn't changing movement backwards
+	jne allowed_left
+	ret							; exit early if trying to change from right to left
+allowed_left:
 	mov word [mov_x], -5		; set x velocity to -5
 	mov word [mov_y], 0			; set y velocity to 0
 	ret
 
 switch_down:
 	cmp al, 73h					; see if key was 's' in ascii
-	jne switch_right			; if key is not 's' exit
+	jne switch_right			; if key is not 's' continue
+	cmp word [mov_y], -5		; confirm snake isn't changing movement backwards
+	jne allowed_down
+	ret							; exit early if trying to change from right to left
+allowed_down:
 	mov word [mov_x], 0			; set x velocity to -5
 	mov word [mov_y], 5			; set x velocity to -5
 	ret
 
 switch_right:
 	cmp al, 64h					; see if key was 'd' in ascii
-	jne switch_up
+	jne switch_up				; if key is not 'd' continue
+	cmp word [mov_x], -5		; confirm snake isn't changing movement backwards
+	jne allowed_right
+	ret							; exit early if trying to change from right to left
+allowed_right:
 	mov word [mov_x], 5
 	mov word [mov_y], 0
 	ret
 
 switch_up:
-	cmp al, 77h					; see if key was 'w' in ascii
+	cmp al, 77h							; see if key was 'w' in ascii
 	jne exit_check_input				; if no relevant key was pressed, ignore key press
+	cmp word [mov_y], 5					; confirm snake isn't changing movement backwards
+	jne allowed_up
+	ret
+allowed_up:
 	mov word [mov_x], 0
 	mov word [mov_y], -5
 exit_check_input:
