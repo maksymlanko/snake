@@ -330,7 +330,7 @@ check_end_x:
 	jne check_start_x
 	cmp word [mov_x], 5			; check if moving forward
 	jl update_x				; if vel < 5 don't reset x
-	mov bx, -5					; if x=320 and vel >= 5 -> reset x
+	mov bx, 0					; if x=320 and vel >= 5 -> reset x
 check_start_x:
 	cmp bx, 0					; check if position = screen start
 	jne update_x
@@ -362,7 +362,7 @@ check_start_y:
 	jne update_y
 	cmp word [mov_y], -5
 	jg update_y
-	mov bx, 195
+	mov bx, 200
 
 update_y:
 	add bx, [mov_y]
