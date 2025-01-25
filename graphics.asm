@@ -128,7 +128,7 @@ check_crash:
 	sub di, 2					; snake[len-1].y
 compare:
 	cmp word [di], ax			; compare snake[pos].y == snake[head].y
-	jne dec_compare_y				; if != return
+	jne dec_compare_y			; if != return
 	sub di, 2					; di points to snake[pos].x
 	cmp word [di], bx			; compare snake[pos].x == snake[head].x
 	jne dec_compare
@@ -138,8 +138,8 @@ dec_compare_y:
 dec_compare:
 	sub di, 2					; go from snake[pos].x to snake[pos-1].y
 	cmp di, -2					; check if we are going outside snake buffer
-	je no_reset_di
-	mov di, 198					; di = snake[last].y
+	jne no_reset_di
+	add di, 200					; di = snake[last].y
 no_reset_di:
 	dec cx						; check previous position
 	cmp cx, 0					; if checked all positions
@@ -330,7 +330,7 @@ check_end_x:
 	jne check_start_x
 	cmp word [mov_x], 5			; check if moving forward
 	jl update_x				; if vel < 5 don't reset x
-	mov bx, 0					; if x=320 and vel >= 5 -> reset x
+	mov bx, -5					; if x=320 and vel >= 5 -> reset x
 check_start_x:
 	cmp bx, 0					; check if position = screen start
 	jne update_x
