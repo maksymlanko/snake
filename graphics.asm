@@ -27,6 +27,7 @@ game_loop:
 	call save_new_position
 	call draw_snake
 	call check_apple
+	call check_crash
 	call check_eaten
 	call delay					; jump to main loop
 	jmp game_loop
@@ -104,6 +105,46 @@ get_random:
 	mul bx						; multiply them (saved in DX:AX)
 	add ax, [game_tick]			; add kind of random value
 	mov [seed], ax				; save new seed value
+	ret
+
+check_crash:
+	; get snake head
+	mov dx, 0					; DIV XX opcode: divide DX:AX by XX and store result in AX, modulus in DX
+	mov ax, [game_tick]			; load current game_tick
+	mov cx, 50					; load max game_tick (100 positions / 4 position size = 25 max game_ticks)
+	div cx						; perform division
+	mov si, dx					; save modulus in si
+	shl si, 2					; saved x is 2 bytes, y is another 2 bytes, so we want index * 4
+
+	mov cx, [cur_len]			; load snake len
+	sub cx, 4					; snake can only hit iself starting at length 5
+	jle exit_crash				; ret
+
+	lea di, [snake + si + 2]	; load snake[len] / head
+	mov ax, [di]				; load snake head y position
+	sub di, 2					; point to snake[len].x
+	mov bx, [di]				; load snake head x position
+
+	sub di, 2					; snake[len-1].y
+compare:
+	cmp word [di], ax			; compare snake[pos].y == snake[head].y
+	jne dec_compare_y				; if != return
+	sub di, 2					; di points to snake[pos].x
+	cmp word [di], bx			; compare snake[pos].x == snake[head].x
+	jne dec_compare
+	call exit_key
+dec_compare_y:
+	sub di, 2					; go from snake[pos].y to snake[pos].x
+dec_compare:
+	sub di, 2					; go from snake[pos].x to snake[pos-1].y
+	cmp di, -2					; check if we are going outside snake buffer
+	je no_reset_di
+	mov di, 198					; di = snake[last].y
+no_reset_di:
+	dec cx						; check previous position
+	cmp cx, 0					; if checked all positions
+	jne compare
+exit_crash:
 	ret
 
 check_apple:
