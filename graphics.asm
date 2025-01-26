@@ -391,25 +391,41 @@ update_y:
 	mov [cur_y], bx
 	ret
 
+; print 3 digit number
 itoa:
+
 	push bp						; setup stack
 	mov bp, sp
-	mov dx, word [bp+4]				; load ax with num arg1
-itoa_char:
-	push word 10				; get individual char by /= 10
-	push word dx				; push score to be split by digit
-	call get_modulus			; calc division result and remainder
-	; mod in ax div in bx
-	add sp, 4					; reclaim stack space used for function call
-	mov cl, '0'					; load ascii char representing '0' in cx
-	add al, cl					; al = '0' + mod / 10
-	mov dx, bx					; save division result in dx
+	mov dx, word [bp+4]			; load ax with num arg1
+	
+; print 1st digit
+	push word 100				; divide by 100
+	push word dx
+	call get_modulus
+	add sp, 4					; cleanup stack
+	push ax						; save modulus
+	mov al, '0'					; get ascii value of digit by adding index to char '0'
+	add al, bl
+	call print_char				; print 1st digit
+	pop word dx					; restore modulus
 
-	call print_char
-	cmp dx, 0					; check if we reached 0 chars left
-	jne itoa_char
+; print 2nd digit
+	push word 10				; divide by 10
+	push word dx
+	call get_modulus			
+	add sp, 4					; cleanup stack
+	push word ax				; save modulus == last digit
+	mov al, '0'					; '0' + num
+	add al, bl
+	call print_char				; print 2nd digit
+	pop word ax					; restore last digit
 
-	pop bp						; retrieve saved bp
+; print 3rd digit
+	mov cl, '0'					; '0' + num
+	add al, cl
+	call print_char				; print 3rd digit
+
+	pop bp
 	ret
 
 ; pass char in al
@@ -461,8 +477,7 @@ print_lose:
 	int 21h						; execute interrupt for displaying
 	mov ax, [cur_len]			; load ax with length == score +2
 	sub ax, 2					; ax = score
-	; push word ax				; push to stack as argument for itoa
-	push word 108				; push to stack as argument for itoa
+	push word ax				; push to stack as argument for itoa
 	call itoa					; print ascii value of score (1 char)
 	add sp, 2					; reclaim stack space used for passing arg to itoa func
 	jmp exit_key
