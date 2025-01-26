@@ -388,7 +388,26 @@ update_y:
 	mov [cur_y], bx
 	ret
 
-exit_key:	
+itoa:
+	push bp						; setup stack
+	mov bp, sp
+	mov dx, [bp-4]				; load ax with num arg1
+
+	mov al, '8'					; temp fixed char to test print_char
+	call print_char
+	pop bp						; retrieve saved bp
+	ret
+
+; pass char in al
+print_char:
+	mov ah, 09h					; write char, advance cursor and set color
+	mov bh, 0					; page number 0 i guess
+	mov bl, 3h					; pretty light blue
+	mov cx, 3					; print char 3 times
+	int 10h						; call interrupt to write char to screen
+	ret
+
+exit_key:
 	; Keep the program running (exit on key press)
 	mov ah, 0                   ; AH=0 - Function number for 'Check Keystroke'
 	int 16h                     ; Call interrupt 16h (Keyboard BIOS services), wait for key press
@@ -410,6 +429,12 @@ print_lose:
 	mov ah, 09h					; print string interrupt option
 	mov dx, hello_world			; load addr of hello_world string
 	int 21h						; execute interrupt for displaying
+	mov ax, [cur_len]			; load ax with length == score +2
+	sub ax, 2					; ax = score
+	; push word [ax]				; push to stack as argument for itoa
+	push word 7				; push to stack as argument for itoa
+	call itoa					; print ascii value of score (1 char)
+	add sp, 2					; reclaim stack space used for passing arg to itoa func
 	jmp exit_key
 shutdown:
 	mov ax, 4C00h               ; Set function for 'Terminate with return code'
