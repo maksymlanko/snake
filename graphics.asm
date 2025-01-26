@@ -14,6 +14,7 @@ section	.data
 	apple_y			DW 0 		; apple y coordinate
 	seed			DW 0x1337	; seed for generating apple coords
 	snake			DW 100 dup(10)
+	hello_world		DB 'You lost!', 0x0D, 0x0a, ' r(estart) / c(continue)?', 0x0D, 0x0A, '$'	; strings in DOS must end with $, like \0 in C programming
  
 
 section	.text
@@ -58,8 +59,10 @@ save_new_position:
 	ret
 
 create_snake:
-	mov ax, [cur_x]				; load starting x position
-	mov bx, [cur_y]				
+	mov word ax, 5				; load starting x position
+	mov word bx, 5
+	mov word [cur_len], 2
+	mov word [game_tick], 1
 	; using SI and DI because CX and DX arent valid destination registers for LEA in x86 asm
 	lea si, [snake+0]			; load first address of circular buffer
 	mov [si], ax				; store in first position of circular buffer
@@ -132,7 +135,7 @@ compare:
 	sub di, 2					; di points to snake[pos].x
 	cmp word [di], bx			; compare snake[pos].x == snake[head].x
 	jne dec_compare
-	call exit_key
+	call print_lose
 dec_compare_y:
 	sub di, 2					; go from snake[pos].y to snake[pos].x
 dec_compare:
@@ -385,9 +388,29 @@ update_y:
 	mov [cur_y], bx
 	ret
 
-exit_key:
+exit_key:	
 	; Keep the program running (exit on key press)
 	mov ah, 0                   ; AH=0 - Function number for 'Check Keystroke'
 	int 16h                     ; Call interrupt 16h (Keyboard BIOS services), wait for key press
+	cmp al, 'y'					; Check if pressed key was 'y'
+	jne check_continue
+	mov sp, 0FFFDh				; reset stack
+	jmp start					; restart game
+check_continue:
+	cmp al, 'c'					; continue game
+	jne check_print
+	call init_screen			; go back to video mode
+	ret
+check_print:
+	cmp al, 'p'					; print string
+	jne shutdown
+	; mov ax, @data				; @ loads addr of .data segment
+	; mov ds, ax					; mov from intermediate ax reg
+print_lose:
+	mov ah, 09h					; print string interrupt option
+	mov dx, hello_world			; load addr of hello_world string
+	int 21h						; execute interrupt for displaying
+	jmp exit_key
+shutdown:
 	mov ax, 4C00h               ; Set function for 'Terminate with return code'
 	int 21h                     ; Call interrupt 21h (DOS services), terminate the program
