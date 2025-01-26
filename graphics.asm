@@ -180,6 +180,8 @@ skip_generate_coords:
 	call draw_apple
 	ret
 
+; arg1 = P, arg2 = Q
+; modulus returned in ax, division returned in bx
 get_modulus:
 	push bp						; save previous bp
 	mov bp, sp					; set base pointer
@@ -188,6 +190,7 @@ get_modulus:
 	mov ax, [bp+4]				; get random value passed as arg1
 	mov cx, [bp+6]				; get value to use as divider (arg2)
 	div cx						; perform division
+	mov bx, ax					; very stupid to change order but rest of the code uses mod result in ax when returned so...
 	mov ax, dx					; save modulus in ax
 	; because in 16bit you can't do lea [arr + 2 * counter]
 	pop bp
@@ -391,20 +394,47 @@ update_y:
 itoa:
 	push bp						; setup stack
 	mov bp, sp
-	mov dx, [bp-4]				; load ax with num arg1
+	mov dx, word [bp+4]				; load ax with num arg1
+itoa_char:
+	push word 10				; get individual char by /= 10
+	push word dx				; push score to be split by digit
+	call get_modulus			; calc division result and remainder
+	; mod in ax div in bx
+	add sp, 4					; reclaim stack space used for function call
+	mov cl, '0'					; load ascii char representing '0' in cx
+	add al, cl					; al = '0' + mod / 10
+	mov dx, bx					; save division result in dx
 
-	mov al, '8'					; temp fixed char to test print_char
 	call print_char
+	cmp dx, 0					; check if we reached 0 chars left
+	jne itoa_char
+
 	pop bp						; retrieve saved bp
 	ret
 
 ; pass char in al
 print_char:
+	push dx
+	push bx
+
+    ; Get current cursor position
+    mov ah, 03h                 ; function 03h = get cursor position
+    mov bh, 0                   ; page number 0
+    int 10h                     ; DH = row, DL = column after call
+
 	mov ah, 09h					; write char, advance cursor and set color
 	mov bh, 0					; page number 0 i guess
 	mov bl, 3h					; pretty light blue
-	mov cx, 3					; print char 3 times
+	mov cx, 1					; print char 3 times
 	int 10h						; call interrupt to write char to screen
+
+	inc dl						; inc cursor row
+	mov ah, 02h					; set cursor
+	mov bh, 0					; page number 0
+	int 10h
+
+	pop bx
+	pop dx
 	ret
 
 exit_key:
@@ -431,8 +461,8 @@ print_lose:
 	int 21h						; execute interrupt for displaying
 	mov ax, [cur_len]			; load ax with length == score +2
 	sub ax, 2					; ax = score
-	; push word [ax]				; push to stack as argument for itoa
-	push word 7				; push to stack as argument for itoa
+	; push word ax				; push to stack as argument for itoa
+	push word 108				; push to stack as argument for itoa
 	call itoa					; print ascii value of score (1 char)
 	add sp, 2					; reclaim stack space used for passing arg to itoa func
 	jmp exit_key
