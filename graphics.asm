@@ -14,7 +14,7 @@ section	.data
 	apple_y			DW 0 		; apple y coordinate
 	seed			DW 0x1337	; seed for generating apple coords
 	snake			DW 100 dup(10)
-	hello_world		DB 'You lost!', 0x0D, 0x0a, ' r(estart) / c(continue)?', 0x0D, 0x0A, '$'	; strings in DOS must end with $, like \0 in C programming
+	hello_world		DB ' You lost!', 0x0D, 0x0a, ' r(estart) / c(continue)? Score: ', '$'	; strings in DOS must end with $, like \0 in C programming
  
 
 section	.text
@@ -397,7 +397,7 @@ itoa:
 	push bp						; setup stack
 	mov bp, sp
 	mov dx, word [bp+4]			; load ax with num arg1
-	
+
 ; print 1st digit
 	push word 100				; divide by 100
 	push word dx
