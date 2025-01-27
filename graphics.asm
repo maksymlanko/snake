@@ -1,6 +1,9 @@
 [org 0x100]                 	; Origin directive, set start address for the program (used in .COM files)
 
-circular_len equ 100			; max snake len / 2
+circular_len 	equ 100			; max snake len / 2
+VIDEO_SEGMENT	equ 0A000h		; Start of VGA memory
+SCREEN_WIDTH	equ 320			; Width of screen in pixels
+
 section	.data
 	cur_x			DW 5		; our x position
 	cur_y			DW 5		; our y position
@@ -32,6 +35,44 @@ game_loop:
 	call check_eaten
 	call delay					; jump to main loop
 	jmp game_loop
+
+fast_square:
+	push bp						; save bp
+	mov bp, sp					; set bp to sp
+	push cx
+
+; Set up ES:DI to point to video memory
+    mov ax, VIDEO_SEGMENT
+    mov es, ax
+
+; Calculate starting position in video memory
+    mov ax, [bp+6]				; y coordinate
+    mov bx, SCREEN_WIDTH
+    mul bx						; AX = y * 320
+    add ax, [bp+4]				; Add x coordinate
+    mov di, ax					; DI now points to first pixel
+
+; Get the square size and color
+    mov cx, [cur_size]			; Square size
+    mov al, [bp+8]				; Color to use
+
+; Draw the square line by line
+.draw_line:
+    push di						; Save starting position of this line
+
+    mov byte [es:di], al		; Pixel 1
+    mov byte [es:di+1], al		; Pixel 2
+    mov byte [es:di+2], al		; Pixel 3
+    mov byte [es:di+3], al 		; Pixel 4
+    mov byte [es:di+4], al		; Pixel 5
+
+    pop di						; retrieve line position
+    add di, 320					; next column
+    loop .draw_line
+
+    pop cx
+    pop bp
+    ret
 
 init_screen:
 	; Set video mode to 320x200 pixels with 256 colors
@@ -88,7 +129,7 @@ snake_loop:
 	sub di, 2					; get x
 	push word [di]
 
-	call draw_square			; draw our position
+	call fast_square			; draw our position
 	add sp, 6
 
 	inc cx
@@ -203,7 +244,7 @@ draw_apple:
 	mov ax, [apple_x]
 	push word ax
 
-	call draw_square			; draw apple
+	call fast_square			; draw apple
 	mov word [apple_exists], 1		; set apple_exists flag to true 
 	add sp, 6					; clean up stack
 	ret
@@ -393,7 +434,6 @@ update_y:
 
 ; print 3 digit number
 itoa:
-
 	push bp						; setup stack
 	mov bp, sp
 	mov dx, word [bp+4]			; load ax with num arg1
