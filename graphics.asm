@@ -83,11 +83,12 @@ init_screen:
 
 save_new_position:
 	; get modulus
-	mov dx, 0					; DIV XX opcode: divide DX:AX by XX and store result in AX, modulus in DX
-	mov ax, [game_tick]			; load current game_tick
-	mov cx, 50					; load max game_tick (100 positions / 4 position size = 25 max game_ticks)
-	div cx						; perform division
-	mov si, dx					; save modulus in si
+	push word 50				; load max game_tick (100 positions / 4 position size = 25 max game_ticks)
+	push word [game_tick]		; load current game_tick
+	call get_modulus			; get random % 40
+	add sp, 4
+
+	mov si, ax					; save modulus in si
 	; because in 16bit you can't do lea [arr + 2 * counter]
 	shl si, 2					; saved x is 2 bytes, y is another 2 bytes, so we want index * 4
 
@@ -114,11 +115,13 @@ create_snake:
 
 draw_snake:
 	; get modulus
-	mov dx, 0					; DIV XX opcode: divide DX:AX by XX and store result in AX, modulus in DX
-	mov ax, [game_tick]			; load current game_tick
-	mov cx, 50					; load max game_tick (100 positions / 4 position size = 25 max game_ticks)
-	div cx						; perform division
-	mov si, dx					; save modulus in si
+
+	push word 50				; load max game_tick (100 positions / 4 position size = 25 max game_ticks)
+	push word [game_tick]		; load current game_tick
+	call get_modulus			; get random % 40
+	add sp, 4
+
+	mov si, ax					; save modulus in si
 	shl si, 2
 
 	mov cx, 0
@@ -153,11 +156,12 @@ get_random:
 
 check_crash:
 	; get snake head
-	mov dx, 0					; DIV XX opcode: divide DX:AX by XX and store result in AX, modulus in DX
-	mov ax, [game_tick]			; load current game_tick
-	mov cx, 50					; load max game_tick (100 positions / 4 position size = 25 max game_ticks)
-	div cx						; perform division
-	mov si, dx					; save modulus in si
+	push word 50				; load max game_tick (100 positions / 4 position size = 25 max game_ticks)
+	push word [game_tick]		; load current game_tick
+	call get_modulus			; get random % 40
+	add sp, 4
+
+	mov si, ax					; save modulus in si
 	shl si, 2					; saved x is 2 bytes, y is another 2 bytes, so we want index * 4
 
 	mov cx, [cur_len]			; load snake len
