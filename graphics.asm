@@ -1,6 +1,6 @@
 [org 0x100]                 	; Origin directive, set start address for the program (used in .COM files)
 
-circular_len 	equ 100			; max snake len / 2
+MAX_SNAKE	 	equ 200			; max snake len / 2
 VIDEO_SEGMENT	equ 0A000h		; Start of VGA memory
 SCREEN_WIDTH	equ 320			; Width of screen in pixels
 
@@ -10,13 +10,13 @@ section	.data
 	mov_x			DW 5		; our movement in x
 	mov_y			DW 0		; our movement in y
 	cur_size		DW 5		; square length
-	cur_len			DW 2
-	game_tick		DW 1
+	cur_len			DW 2		; snake length
+	game_tick		DW 1		; tick used to calculate current position
 	apple_exists	DW 0		; flag for checking if apple already exists
 	apple_x			DW 0		; apple x coordinate
 	apple_y			DW 0 		; apple y coordinate
 	seed			DW 0x1337	; seed for generating apple coords
-	snake			DW 100 dup(10)
+	snake			DW MAX_SNAKE dup(10)	; define snake array with size MAX_SNAKE and init values to 10
 	hello_world		DB ' You lost!', 0x0D, 0x0a, ' r(estart) / c(continue)? Score: ', '$'	; strings in DOS must end with $, like \0 in C programming
  
 
@@ -102,15 +102,14 @@ save_new_position:
 
 create_snake:
 	mov word ax, 5				; load starting x position
-	mov word bx, 5
-	mov word [cur_len], 2
-	mov word [game_tick], 1
+	mov word bx, 5				; load starting y position
+	mov word [cur_len], 2		; init snake length
+	mov word [game_tick], 1		; init game tick
 	; using SI and DI because CX and DX arent valid destination registers for LEA in x86 asm
-	lea si, [snake+0]			; load first address of circular buffer
-	mov [si], ax				; store in first position of circular buffer
-
-	add si, 2
-	mov [si], bx
+	lea si, [snake+0]			; load first address of snake array
+	mov [si], ax				; store starting x in first position of snake array
+	add si, 2					; move pointer to y coordinate of first position of snake array
+	mov [si], bx				; store starting y in first position of snake array
 	ret
 
 draw_snake:
@@ -273,18 +272,18 @@ not_eaten:
 check_input:
 	mov ah, 1h					; see if key was pressed
 	int 16h						; call interrupt
-	jnz read_key				; if received a key read it
-	ret
+	jnz read_key				; if key was pressed read it
+	ret							; else return
 
 read_key:
-	mov ah, 0h					; read key int
-	int 16h						; call int
+	mov ah, 0h					; setup read key
+	int 16h						; call interrupt
 
 switch_left:
-	cmp al, 61h					; see if key was 'a' in ascii
-	jne switch_down				; if key is not 'a' continue
+	cmp al, 'a'					; see if pressed key was 'a'
+	jne switch_down				; if pressed key is not 'a' continue to look for key
 	cmp word [mov_x], 5			; confirm snake isn't changing movement backwards
-	jne allowed_left
+	jne allowed_left			; allow movement to be changed
 	ret							; exit early if trying to change from right to left
 allowed_left:
 	mov word [mov_x], -5		; set x velocity to -5
@@ -292,36 +291,36 @@ allowed_left:
 	ret
 
 switch_down:
-	cmp al, 73h					; see if key was 's' in ascii
-	jne switch_right			; if key is not 's' continue
+	cmp al, 's'					; see if pressed key was 's'
+	jne switch_right			; if pressed key is not 's' continue to look for key
 	cmp word [mov_y], -5		; confirm snake isn't changing movement backwards
-	jne allowed_down
-	ret							; exit early if trying to change from right to left
+	jne allowed_down			; allow movement to be changed
+	ret							; exit early if trying to change from up to down
 allowed_down:
-	mov word [mov_x], 0			; set x velocity to -5
-	mov word [mov_y], 5			; set x velocity to -5
+	mov word [mov_x], 0			; set x velocity to 0
+	mov word [mov_y], 5			; set x velocity to 5
 	ret
 
 switch_right:
-	cmp al, 64h					; see if key was 'd' in ascii
+	cmp al, 'd'					; if pressed key is not 'd' continue to look for key
 	jne switch_up				; if key is not 'd' continue
 	cmp word [mov_x], -5		; confirm snake isn't changing movement backwards
-	jne allowed_right
-	ret							; exit early if trying to change from right to left
+	jne allowed_right			; allow movement to be changed
+	ret							; exit early if trying to change from left to right
 allowed_right:
-	mov word [mov_x], 5
-	mov word [mov_y], 0
+	mov word [mov_x], 5			; set x velocity to 5
+	mov word [mov_y], 0			; set y velocity to 0
 	ret
 
 switch_up:
-	cmp al, 77h							; see if key was 'w' in ascii
-	jne exit_check_input				; if no relevant key was pressed, ignore key press
-	cmp word [mov_y], 5					; confirm snake isn't changing movement backwards
-	jne allowed_up
+	cmp al, 'w'						; if pressed key is not 'w' continue to look for key
+	jne exit_check_input			; if no relevant key was pressed, ignore key press
+	cmp word [mov_y], 5				; confirm snake isn't changing movement backwards
+	jne allowed_up					; allow movement to be changed
 	ret
 allowed_up:
-	mov word [mov_x], 0
-	mov word [mov_y], -5
+	mov word [mov_x], 0				; change x velocity to 0
+	mov word [mov_y], -5			; change y velocity to -5
 exit_check_input:
 	ret
 
@@ -359,10 +358,10 @@ draw_y:
 clear_screen:
 	; Set all pixels in video memory to color index 0 (black) by repeating stosb 'cx' times
 	cld						 	; Set direction to forward (0)
-    mov ax, 0A000h           	; Set segment address to video memory
+    mov ax, VIDEO_SEGMENT       ; Set segment address to video memory
     mov es, ax               	; Load ES with video memory segment
     xor di, di               	; Set di to start of video memory
-    mov cx, 64000            	; There are 320x200 pixels, each pixel takes 1 byte
+    mov cx, 320*200            	; There are 320x200 pixels, each pixel takes 1 byte
     mov al, 0                	; Color index for black (clear to black)
     rep stosb                	; Stores AL into ES:DI and increments DI, rep + stosb is like memset()
 	ret
@@ -371,19 +370,18 @@ delay:
 	; Delay for CX:DX microseconds (CX and DX are 16 bit)
 	mov ah, 86h					; Set flag to wait CX:DX time
 	xor cx, cx					; Set cx to 0
-	;mov dx, 16393				; around 1/60 of second
 	mov dx, 16666				; around 1/60 of second
 	int 15h						; Call wait interrupt
-	mov bx, [game_tick]
-	inc bx
+	mov bx, [game_tick]			; Load game tick
+	inc bx						; Add 1 to game tick
 
 	; dont make it 0 because of out of bounds snake[] access in draw_snake
-	cmp bx, 199
-	jne	skip_reset_tick
-	mov bx, 99
+	cmp bx, MAX_SNAKE-1			; Check if game tick is same as MAX_SNAKE - 1
+	jne	skip_reset_tick			; If it isn't just save new game tick
+	mov bx, MAX_SNAKE / 2 - 1	; If equal to MAX_SNAKE set it to half of MAX_SNAKE - 1
 
 skip_reset_tick:
-	mov [game_tick], bx
+	mov [game_tick], bx			; save updated game tick
 	ret
 
 move_square:
