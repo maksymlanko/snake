@@ -27,7 +27,7 @@ start:
 game_loop:
 	call clear_screen
 	call check_input
-	call move_square
+	call move_snake
 	call save_new_position
 	call draw_snake
 	call check_apple
@@ -39,15 +39,13 @@ game_loop:
 fast_square:
 	push bp						; save bp
 	mov bp, sp					; set bp to sp
-	push cx
+	push cx						; save cx
 
-; Set up ES:DI to point to video memory
-    mov ax, VIDEO_SEGMENT
-    mov es, ax
-
+    mov ax, VIDEO_SEGMENT		; mov VIDEO_SEGMENT to temp reg ax
+    mov es, ax					; load VIDEO_SEGMENT is es
 ; Calculate starting position in video memory
     mov ax, [bp+6]				; y coordinate
-    mov bx, SCREEN_WIDTH
+    mov bx, SCREEN_WIDTH		; load SCREEN_WIDTH
     mul bx						; AX = y * 320
     add ax, [bp+4]				; Add x coordinate
     mov di, ax					; DI now points to first pixel
@@ -66,12 +64,12 @@ fast_square:
     mov byte [es:di+3], al 		; Pixel 4
     mov byte [es:di+4], al		; Pixel 5
 
-    pop di						; retrieve line position
+    pop di						; restore line position
     add di, 320					; next column
-    loop .draw_line
+    loop .draw_line				; draw next line
 
-    pop cx
-    pop bp
+    pop cx						; restore cx
+    pop bp						; restore bp
     ret
 
 init_screen:
@@ -82,18 +80,17 @@ init_screen:
 	ret
 
 save_new_position:
-	; get modulus
-	push word 50				; load max game_tick (100 positions / 4 position size = 25 max game_ticks)
+	push word MAX_SNAKE	* 2 / 4	; load max game_tick (200 positions * 2 bytes each / 4 bytes size of each coord = 100 max game_ticks)
 	push word [game_tick]		; load current game_tick
-	call get_modulus			; get random % 40
-	add sp, 4
+	call get_modulus			; get game_tick / 100 max game_ticks
+	add sp, 4					; cleanup stack
 
 	mov si, ax					; save modulus in si
 	; because in 16bit you can't do lea [arr + 2 * counter]
 	shl si, 2					; saved x is 2 bytes, y is another 2 bytes, so we want index * 4
 
 	mov ax, [cur_x]				; load x position
-	mov bx, [cur_y]
+	mov bx, [cur_y]				; load y position
 	lea di, [snake+si]			; load position snake[2i]
 	mov [di], ax				; save x in snake[2i]
 	add di, 2					; advance index by 2
@@ -113,36 +110,32 @@ create_snake:
 	ret
 
 draw_snake:
-	; get modulus
-
-	push word 50				; load max game_tick (100 positions / 4 position size = 25 max game_ticks)
+	; push word 50				; load max game_tick (100 positions / 4 position size = 25 max game_ticks)
+	push word MAX_SNAKE	* 2 / 4	; load max game_tick (200 positions * 2 bytes each / 4 bytes size of each coord = 100 max game_ticks)
 	push word [game_tick]		; load current game_tick
-	call get_modulus			; get random % 40
-	add sp, 4
+	call get_modulus			; get game_tick / 100 max game_ticks
+	add sp, 4					; cleanup stack
 
 	mov si, ax					; save modulus in si
-	shl si, 2
-
-	mov cx, 0
+	shl si, 2					; saved x is 2 bytes, y is another 2 bytes, so we want index * 4	
+	mov cx, 0					; init counter for drawn snake squares
 snake_loop:
-	push word 4					; red color
+	push word 4					; set arg3 = red color
 	lea di, [snake + si+2]		; get y
-	push word [di] 
+	push word [di] 				; set arg2 = y
 	sub di, 2					; get x
-	push word [di]
+	push word [di]				; set arg1 = x
+	call fast_square			; draw square, part of snake
+	add sp, 6					; cleanup stack
 
-	call fast_square			; draw our position
-	add sp, 6
-
-	inc cx
-	sub si, 4
-	; if index goes to negative values, change it to last position
-	cmp si, -4
-	jne snake_finished
-	mov si, 196
+	inc cx						; increase counter of drawn squares part of snake
+	sub si, 4					; change offset to previous position of snake
+	cmp si, -4					; check if offset is negative
+	jne snake_finished			; if not negative offset check if finished drawing snake
+	mov si, MAX_SNAKE*4/2 - 4	; change offset to last position = MAX_SNAKE * 4bytes per position / 2 parts of coord - 1
 snake_finished:
-	cmp cx, [cur_len]
-	jne snake_loop
+	cmp cx, [cur_len]			; check drawn squares == snake length
+	jne snake_loop				; if different draw another square
 	ret
 
 get_random:
@@ -324,6 +317,7 @@ allowed_up:
 exit_check_input:
 	ret
 
+; UNUSED ALTERNATIVE TO fast_square
 draw_square:
 	push bp						; save bp
 	mov bp, sp					; set bp to sp
@@ -384,24 +378,24 @@ skip_reset_tick:
 	mov [game_tick], bx			; save updated game tick
 	ret
 
-move_square:
+move_snake:
 calc_x:
 	cmp word [mov_x], 0			; is there movement in x
-	je calc_y
-	mov bx, [cur_x]				; load our x position
+	je calc_y					; if not check movement in y
+	mov bx, [cur_x]				; else load our x position
 
 check_end_x:
 	cmp bx, 320					; check if position = screen end
-	jne check_start_x
+	jne check_start_x			; else check if position = screen start
 	cmp word [mov_x], 5			; check if moving forward
-	jl update_x				; if vel < 5 don't reset x
-	mov bx, -5					; if x=320 and vel >= 5 -> reset x
+	jl update_x					; if screen_end && mov_x != 5 update x
+	mov bx, -5					; if x=320 and mov_x >= 5 -> reset x
 check_start_x:
 	cmp bx, 0					; check if position = screen start
-	jne update_x
-	cmp word [mov_x], -5		
-	jg update_x
-	mov bx, 325
+	jne update_x				; if not just update x position
+	cmp word [mov_x], -5		; check if moving to the left
+	jg update_x					; if not an edge case just update x position
+	mov bx, 325					; if (screen_start && mov_x == -5) -> set x to screen_end
 
 update_x:
 	add bx, [mov_x]				; add velocity to our x position
@@ -410,28 +404,28 @@ update_x:
 
 calc_y:
 	cmp word [mov_y], 0			; is there movement in y
-	jne after_check
+	jne after_check				; if no movement in y return
 	ret
 after_check:
-	mov bx, [cur_y]
+	mov bx, [cur_y]				; load current y position
 
 check_end_y:
-	cmp bx, 195
-	jne check_start_y
+	cmp bx, 195					; check if y == screen_end
+	jne check_start_y			; if not check if y == screen_start
 	cmp word [mov_y], 5			; check if moving down
-	jl update_y
-	mov bx, -5					; set bx to before screen start
-	jmp update_y
+	jl update_y					; if !(y == screen_end && mov_y = down) -> update normally
+	mov bx, -5					; update y to before screen start
+	jmp update_y				; save y position
 check_start_y:
-	cmp bx, 0
-	jne update_y
-	cmp word [mov_y], -5
-	jg update_y
-	mov bx, 200
+	cmp bx, 0					; check y == screen start
+	jne update_y				; if not, update y normally
+	cmp word [mov_y], -5		; if y == screen_start && mov_y = up
+	jg update_y					; else update normally
+	mov bx, 200					; set y to screen_end
 
 update_y:
-	add bx, [mov_y]
-	mov [cur_y], bx
+	add bx, [mov_y]				; add velocity/tick to current position
+	mov [cur_y], bx				; save result
 	ret
 
 ; print 3 digit number
