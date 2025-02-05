@@ -33,7 +33,7 @@ game_loop:
 	call check_apple
 	call check_crash
 	call check_eaten
-	call delay					; jump to main loop
+	call delay
 	jmp game_loop
 
 fast_square:
@@ -148,30 +148,31 @@ get_random:
 
 check_crash:
 	; get snake head
-	push word 50				; load max game_tick (100 positions / 4 position size = 25 max game_ticks)
+	push word MAX_SNAKE	* 2 / 4	; load max game_tick (200 positions * 2 bytes each / 4 bytes size of each coord = 100 max game_ticks)
 	push word [game_tick]		; load current game_tick
 	call get_modulus			; get random % 40
-	add sp, 4
+	add sp, 4					; cleanup stack
 
 	mov si, ax					; save modulus in si
 	shl si, 2					; saved x is 2 bytes, y is another 2 bytes, so we want index * 4
 
 	mov cx, [cur_len]			; load snake len
 	sub cx, 4					; snake can only hit iself starting at length 5
-	jle exit_crash				; ret
+	cmp cx, 0					; check if len - 4 <= 0
+	jle no_crash				; ret
 
 	lea di, [snake + si + 2]	; load snake[len] / head
 	mov ax, [di]				; load snake head y position
 	sub di, 2					; point to snake[len].x
 	mov bx, [di]				; load snake head x position
 
-	sub di, 18					; snake[len-5].y because first 4 positions can't collide with head
+	sub di, 14					; snake[len-4].y because first 4 positions can't collide with head
 compare:
 	cmp word [di], ax			; compare snake[pos].y == snake[head].y
 	jne dec_compare_y			; if != return
 	sub di, 2					; di points to snake[pos].x
 	cmp word [di], bx			; compare snake[pos].x == snake[head].x
-	jne dec_compare
+	jne dec_compare				; if diff check next square
 	call print_lose
 dec_compare_y:
 	sub di, 2					; go from snake[pos].y to snake[pos].x
@@ -184,37 +185,37 @@ no_reset_di:
 	dec cx						; check previous position
 	cmp cx, 0					; if checked all positions
 	jne compare
-exit_crash:
+no_crash:
 	ret
 
 check_apple:
-	mov word ax, [apple_exists]		; return saved in AX register
-	cmp ax, 0
-	jne skip_generate_coords
+	mov word ax, [apple_exists]	; load apple_exists
+	cmp ax, 0					; check if its 0
+	jne skip_generate_coords	; if apple exists dont generate new coords
 
 	; get random valid y position
-	call get_random
-	push word 40				; 200pixels /5pixels per square
+	call get_random				; get random value
+	push word 40				; 200pixels / 5pixels per square
 	push word ax				; random value
 	call get_modulus			; get random % 40
-	mov bx, ax					; ax * 5
-	shl bx, 2
-	add ax, bx
-	mov word [apple_y], ax		; save ax in apple_y
+	mov bx, ax					; bx = ax
+	shl bx, 2					; bx *= 4
+	add ax, bx					; bx = 5ax
+	mov word [apple_y], ax		; save random valid y in apple_y
 	add sp, 4					; clean up stack
 	; get random valid x position
-	call get_random
-	push word 64				; 320pixels /5pixels per square
+	call get_random				; get random value
+	push word 64				; 320pixels / 5pixels per square
 	push word ax				; random value
 	call get_modulus			; get random % 40
-	mov bx, ax					; ax * 5
-	shl bx, 2
-	add ax, bx
-	mov word [apple_x], ax		; save ax in apple_x
+	mov bx, ax					; bx = ax
+	shl bx, 2					; bx *= 4
+	add ax, bx					; bx = 5ax
+	mov word [apple_x], ax		; save random valid x in apple_x
 	add sp, 4
 
 skip_generate_coords:
-	call draw_apple
+	call draw_apple				; draw apple
 	ret
 
 ; arg1 = P, arg2 = Q
@@ -234,14 +235,12 @@ get_modulus:
 	ret
 
 draw_apple:
-	push word 2					; green color
-	mov ax, [apple_y]
-	push word ax
-	mov ax, [apple_x]
-	push word ax
+	push word 2					; set arg3 = green color
+	push word [apple_y]			; set arg2 = apple_y 
+	push word [apple_x]			; set arg1 = apple_x
 
 	call fast_square			; draw apple
-	mov word [apple_exists], 1		; set apple_exists flag to true 
+	mov word [apple_exists], 1	; set apple_exists flag to true 
 	add sp, 6					; clean up stack
 	ret
 
@@ -254,11 +253,11 @@ check_eaten:
 	mov word bx, [apple_y]		; load apple y
 	cmp ax, bx					; see if same y coordinate
 	jne not_eaten				; if different, return
-	
+	; if ate apple
 	mov word ax, [cur_len]		; load snake length
 	inc ax						; snake len += 1
 	mov [cur_len], ax			; save snake length
-	mov word [apple_exists], 0		; set apple_exists flag to false 
+	mov word [apple_exists], 0	; set apple_exists flag to false 
 not_eaten:
 	ret
 
@@ -506,7 +505,7 @@ check_print:
 	cmp al, 'p'					; print string
 	jne shutdown
 	; mov ax, @data				; @ loads addr of .data segment
-	; mov ds, ax					; mov from intermediate ax reg
+	; mov ds, ax				; mov from intermediate ax reg
 print_lose:
 	mov ah, 09h					; print string interrupt option
 	mov dx, hello_world			; load addr of hello_world string
