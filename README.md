@@ -11,3 +11,6 @@ add to `dosbox.conf`:
 
 run:
 > make
+
+Enjoy!
+https://github.com/user-attachments/assets/bbe51022-30e7-4b3d-8d26-2ef0c1ec95d5
