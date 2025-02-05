@@ -7,10 +7,8 @@ ASM=nasm
 EMULATOR=dosbox
 
 # Set the source file and target output
-#SRC=graphics.asm
-#TARGET=graphics.com
-SRC=sum.asm
-TARGET=sum.com
+SRC=src/snake.asm
+TARGET=src/snake.com
 
 DOS_DIR=~/dosprograms
 
@@ -30,4 +28,4 @@ run:
 clean:
 	rm -f $(TARGET)
 	rm -f $(DOS_DIR)/$(TARGET)
-
+	rm -f *.com
